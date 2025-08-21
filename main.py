@@ -31,18 +31,21 @@ db = SQLAlchemy(app)
 
 def get_kanban_db_connection():
     try:
+        print("🔌 Попытка подключения к канбан-базе данных...")
         connection = pymysql.connect(
-                    host='147.45.138.77',
-        port=3306,
-        user='tekman',
-        password='Moloko123!',
-        database='TEKMAN',
+            host='147.45.138.77',
+            port=3306,
+            user='tekman',
+            password='Moloko123!',
+            database='TEKMAN',
             charset='utf8',
             cursorclass=pymysql.cursors.DictCursor
         )
+        print("✅ Подключение к канбан-базе успешно!")
         return connection
     except Exception as e:
-        print(f"Ошибка подключения к канбан-базе: {e}")
+        print(f"❌ Ошибка подключения к канбан-базе: {e}")
+        print(f"🔍 Тип ошибки: {type(e).__name__}")
         return None
 
 class User(db.Model):
@@ -502,19 +505,25 @@ def delete_chat(chat_id):
 @app.route('/api/web_canban', methods=['GET'])
 def get_web_canban():
     """Получить все задачи из web канбан-доски"""
+    print("🔄 GET /api/web_canban - запрос на получение задач")
     connection = get_kanban_db_connection()
     if not connection:
+        print("❌ Не удалось получить подключение к базе данных")
         return jsonify({'error': 'Database connection failed'}), 500
     
     try:
         with connection.cursor() as cursor:
+            print("📋 Выполняем запрос: SELECT * FROM web_canban ORDER BY id DESC")
             cursor.execute("SELECT * FROM web_canban ORDER BY id DESC")
             tasks = cursor.fetchall()
+            print(f"✅ Получено задач: {len(tasks)}")
             return jsonify(tasks)
     except Exception as e:
+        print(f"❌ Ошибка выполнения запроса: {e}")
         return jsonify({'error': str(e)}), 500
     finally:
         connection.close()
+        print("🔌 Соединение с базой данных закрыто")
 
 @app.route('/api/web_canban', methods=['POST'])
 def add_web_canban_task():
