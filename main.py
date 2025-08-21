@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, Response, stream_template, send_from_directory
+from flask import Flask, request, jsonify, Response, stream_template
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
@@ -75,6 +75,10 @@ class Message(db.Model):
     content = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+@app.route('/health', methods=['GET'])
+def health_check():
+    return jsonify({'status': 'ok', 'message': 'API работает'})
+
 @app.route('/', defaults={'path': ''}, methods=['OPTIONS'])
 @app.route('/<path:path>', methods=['OPTIONS'])
 def handle_options(path):
@@ -85,14 +89,6 @@ def handle_options(path):
     response.headers.add('Access-Control-Allow-Credentials', 'false')
     response.headers.add('Access-Control-Max-Age', '3600')
     return response
-
-@app.route('/', defaults={'path': ''})
-@app.route('/<path:path>')
-def serve_frontend(path):
-    if path != "" and os.path.exists(os.path.join('static', path)):
-        return send_from_directory('static', path)
-    else:
-        return send_from_directory('static', 'index.html')
 
 @app.route('/api/models', methods=['GET'])
 def get_models():
