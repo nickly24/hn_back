@@ -6,7 +6,7 @@ import requests
 import json
 import re
 import pymysql
-import os
+
 from config import Config
 
 app = Flask(__name__)
@@ -942,8 +942,6 @@ def delete_system_canban_task(task_id):
         connection.close()
 
 if __name__ == '__main__':
-    # Получаем порт из переменной окружения для Docker или используем 80 по умолчанию
-    port = int(os.environ.get('PORT', 80))
-    app.run(debug=True, host='0.0.0.0', port=port)
+    app.run(debug=True, host='0.0.0.0', port=80)
 
 # Для запуска через gunicorn: gunicorn main:app --timeout 60 --bind 0.0.0.0:$PORT
