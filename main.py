@@ -8,9 +8,7 @@ import re
 import pymysql
 from config import Config
 
-# Проверка работоспособности
-print("=== Загрузка Flask приложения ===")
-print("Импорты успешно загружены")
+
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -27,9 +25,7 @@ CORS(app,
 
 db = SQLAlchemy(app)
 
-# Инициализация без подключения к БД
-print("Flask приложение инициализировано")
-print("База данных будет подключена при первом запросе")
+
 
 def get_kanban_db_connection():
     try:
@@ -949,14 +945,6 @@ def delete_system_canban_task(task_id):
         connection.close()
 
 if __name__ == '__main__':
-    try:
-        print("Запуск Flask приложения...")
-        print("Порт: 80")
-        print("Хост: 0.0.0.0")
-        app.run(debug=True, host='0.0.0.0', port=80)
-    except Exception as e:
-        print(f"Ошибка запуска приложения: {e}")
-        import traceback
-        traceback.print_exc()
+    app.run(debug=True, host='0.0.0.0', port=80)
 
 # Для запуска через gunicorn: gunicorn main:app --timeout 60 --bind 0.0.0.0:$PORT
