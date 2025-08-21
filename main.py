@@ -20,14 +20,7 @@ CORS(app,
      supports_credentials=False,
      max_age=3600)
 
-@app.after_request
-def after_request(response):
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With,Accept,Origin')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH')
-    response.headers.add('Access-Control-Allow-Credentials', 'false')
-    response.headers.add('Access-Control-Max-Age', '3600')
-    return response
+
 
 db = SQLAlchemy(app)
 
@@ -75,20 +68,15 @@ class Message(db.Model):
     content = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+@app.route('/')
+def index():
+    return jsonify({'message': 'Hello World', 'api': 'AI Chat API'})
+
 @app.route('/health', methods=['GET'])
 def health_check():
     return jsonify({'status': 'ok', 'message': 'API работает'})
 
-@app.route('/', defaults={'path': ''}, methods=['OPTIONS'])
-@app.route('/<path:path>', methods=['OPTIONS'])
-def handle_options(path):
-    response = Response()
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With,Accept,Origin')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH')
-    response.headers.add('Access-Control-Allow-Credentials', 'false')
-    response.headers.add('Access-Control-Max-Age', '3600')
-    return response
+
 
 @app.route('/api/models', methods=['GET'])
 def get_models():
