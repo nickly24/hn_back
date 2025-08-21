@@ -6,13 +6,15 @@ import requests
 import json
 import re
 import pymysql
-from config import Config
+
 
 
 
 app = Flask(__name__)
-app.config.from_object(Config)
+
 app.config['JSON_AS_ASCII'] = False
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://tekbot:77tanufe@147.45.138.77:3306/tekbot'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 CORS(app, 
      origins="*",
@@ -30,11 +32,11 @@ db = SQLAlchemy(app)
 def get_kanban_db_connection():
     try:
         connection = pymysql.connect(
-            host=Config.KANBAN_DB_HOST,
-            port=Config.KANBAN_DB_PORT,
-            user=Config.KANBAN_DB_USER,
-            password=Config.KANBAN_DB_PASSWORD,
-            database=Config.KANBAN_DB_NAME,
+                    host='147.45.138.77',
+        port=3306,
+        user='tekman',
+        password='Moloko123!',
+        database='TEKMAN',
             charset='utf8',
             cursorclass=pymysql.cursors.DictCursor
         )
@@ -93,11 +95,11 @@ def get_models():
     
     try:
         connection = pymysql.connect(
-            host=Config.DB_HOST,
-            port=Config.DB_PORT,
-            user=Config.DB_USER,
-            password=Config.DB_PASSWORD,
-            database=Config.DB_NAME,
+            host='147.45.138.77',
+            port=3306,
+            user='tekbot',
+            password='77tanufe',
+            database='tekbot',
             charset='utf8',
             cursorclass=pymysql.cursors.DictCursor
         )
@@ -161,11 +163,11 @@ def get_chats():
     for chat in chats:
         try:
             connection = pymysql.connect(
-                host=Config.DB_HOST,
-                port=Config.DB_PORT,
-                user=Config.DB_USER,
-                password=Config.DB_PASSWORD,
-                database=Config.DB_NAME,
+                host='147.45.138.77',
+                port=3306,
+                user='tekbot',
+                password='77tanufe',
+                database='tekbot',
                 charset='utf8',
                 cursorclass=pymysql.cursors.DictCursor
             )
@@ -207,11 +209,11 @@ def create_chat():
     
     try:
         connection = pymysql.connect(
-            host=Config.DB_HOST,
-            port=Config.DB_PORT,
-            user=Config.DB_USER,
-            password=Config.DB_PASSWORD,
-            database=Config.DB_NAME,
+            host='147.45.138.77',
+            port=3306,
+            user='tekbot',
+            password='77tanufe',
+            database='tekbot',
             charset='utf8',
             cursorclass=pymysql.cursors.DictCursor
         )
@@ -290,11 +292,11 @@ def chat_with_ai():
     
     try:
         connection = pymysql.connect(
-            host=Config.DB_HOST,
-            port=Config.DB_PORT,
-            user=Config.DB_USER,
-            password=Config.DB_PASSWORD,
-            database=Config.DB_NAME,
+            host='147.45.138.77',
+            port=3306,
+            user='tekbot',
+            password='77tanufe',
+            database='tekbot',
             charset='utf8',
             cursorclass=pymysql.cursors.DictCursor
         )
@@ -410,11 +412,11 @@ def update_chat(chat_id):
     if 'model_id' in data:
         try:
             connection = pymysql.connect(
-                host=Config.DB_HOST,
-                port=Config.DB_PORT,
-                user=Config.DB_USER,
-                password=Config.DB_PASSWORD,
-                database=Config.DB_NAME,
+                host='147.45.138.77',
+                port=3306,
+                user='tekbot',
+                password='77tanufe',
+                database='tekbot',
                 charset='utf8',
                 cursorclass=pymysql.cursors.DictCursor
             )
@@ -446,11 +448,11 @@ def update_chat(chat_id):
     
     try:
         connection = pymysql.connect(
-            host=Config.DB_HOST,
-            port=Config.DB_PORT,
-            user=Config.DB_USER,
-            password=Config.DB_PASSWORD,
-            database=Config.DB_NAME,
+            host='147.45.138.77',
+            port=3306,
+            user='tekbot',
+            password='77tanufe',
+            database='tekbot',
             charset='utf8',
             cursorclass=pymysql.cursors.DictCursor
         )
@@ -945,6 +947,6 @@ def delete_system_canban_task(task_id):
         connection.close()
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=80)
+    app.run(debug=True, host='0.0.0.0', port=8000)
 
 # Для запуска через gunicorn: gunicorn main:app --timeout 60 --bind 0.0.0.0:$PORT
