@@ -6,8 +6,11 @@ import requests
 import json
 import re
 import pymysql
-
 from config import Config
+
+# Проверка работоспособности
+print("=== Загрузка Flask приложения ===")
+print("Импорты успешно загружены")
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -24,14 +27,9 @@ CORS(app,
 
 db = SQLAlchemy(app)
 
-# Простая проверка инициализации
-try:
-    with app.app_context():
-        db.create_all()
-        print("База данных инициализирована успешно")
-except Exception as e:
-    print(f"Предупреждение: не удалось инициализировать БД: {e}")
-    print("Приложение продолжит работу...")
+# Инициализация без подключения к БД
+print("Flask приложение инициализировано")
+print("База данных будет подключена при первом запросе")
 
 def get_kanban_db_connection():
     try:
