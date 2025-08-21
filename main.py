@@ -958,6 +958,8 @@ def delete_system_canban_task(task_id):
         connection.close()
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=80)
+    # Получаем порт из переменной окружения для Docker или используем 80 по умолчанию
+    port = int(os.environ.get('PORT', 80))
+    app.run(debug=True, host='0.0.0.0', port=port)
 
-# Для запуска через gunicorn: gunicorn main:app --timeout 60
+# Для запуска через gunicorn: gunicorn main:app --timeout 60 --bind 0.0.0.0:$PORT
