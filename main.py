@@ -24,6 +24,15 @@ CORS(app,
 
 db = SQLAlchemy(app)
 
+# Простая проверка инициализации
+try:
+    with app.app_context():
+        db.create_all()
+        print("База данных инициализирована успешно")
+except Exception as e:
+    print(f"Предупреждение: не удалось инициализировать БД: {e}")
+    print("Приложение продолжит работу...")
+
 def get_kanban_db_connection():
     try:
         connection = pymysql.connect(
@@ -942,6 +951,14 @@ def delete_system_canban_task(task_id):
         connection.close()
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=80)
+    try:
+        print("Запуск Flask приложения...")
+        print("Порт: 80")
+        print("Хост: 0.0.0.0")
+        app.run(debug=True, host='0.0.0.0', port=80)
+    except Exception as e:
+        print(f"Ошибка запуска приложения: {e}")
+        import traceback
+        traceback.print_exc()
 
 # Для запуска через gunicorn: gunicorn main:app --timeout 60 --bind 0.0.0.0:$PORT
