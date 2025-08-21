@@ -959,3 +959,5 @@ def delete_system_canban_task(task_id):
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=80)
+
+# Для запуска через gunicorn: gunicorn main:app --timeout 60
