@@ -29,24 +29,134 @@ db = SQLAlchemy(app)
 
 
 
+def get_reliable_db_connection(db_type="kanban"):
+    """Универсальная надежная функция подключения к БД"""
+    import time
+    
+    # Конфигурации для разных БД
+    db_configs = {
+        "kanban": {
+            "host": '147.45.138.77',
+            "port": 3306,
+            "user": 'tekman',
+            "password": 'Moloko123!',
+            "database": 'TEKMAN',
+            "name": "канбан-базе"
+        },
+        "main": {
+            "host": '147.45.138.77',
+            "port": 3306,
+            "user": 'tekbot',
+            "password": '77tanufe',
+            "database": 'tekbot',
+            "name": "основной базе"
+        }
+    }
+    
+    config = db_configs.get(db_type, db_configs["kanban"])
+    max_retries = 3
+    retry_delay = 2  # секунды между попытками
+    
+    for attempt in range(max_retries):
+        try:
+            print(f"🔌 Попытка подключения к {config['name']}... (попытка {attempt + 1}/{max_retries})")
+            
+            connection = pymysql.connect(
+                host=config['host'],
+                port=config['port'],
+                user=config['user'],
+                password=config['password'],
+                database=config['database'],
+                charset='utf8',
+                cursorclass=pymysql.cursors.DictCursor,
+                # Таймауты для быстрого обнаружения проблем
+                connect_timeout=10,  # 10 сек на подключение
+                read_timeout=30,     # 30 сек на чтение
+                write_timeout=30,    # 30 сек на запись
+                autocommit=True      # автокоммит
+            )
+            
+            # Проверяем, что соединение работает
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT 1")
+                cursor.fetchone()
+            
+            print(f"✅ Подключение к {config['name']} успешно!")
+            return connection
+            
+        except Exception as e:
+            print(f"❌ Ошибка подключения к {config['name']} (попытка {attempt + 1}): {e}")
+            print(f"🔍 Тип ошибки: {type(e).__name__}")
+            
+            if attempt < max_retries - 1:  # Если не последняя попытка
+                print(f"⏳ Ждем {retry_delay} сек перед следующей попыткой...")
+                time.sleep(retry_delay)
+                retry_delay *= 2  # Увеличиваем паузу
+            else:
+                print(f"💥 Все попытки исчерпаны. {config['name']} недоступна.")
+                return None
+    
+    return None
+
 def get_kanban_db_connection():
+    """Подключение к канбан БД"""
+    return get_reliable_db_connection("kanban")
+
+def get_main_db_connection():
+    """Подключение к основной БД"""
+    return get_reliable_db_connection("main")
+
+def execute_with_retry(connection, query, params=None, fetch_method="fetchall"):
+    """Выполнить запрос с автоматическим переподключением при ошибках"""
+    max_attempts = 2
+    
+    for attempt in range(max_attempts):
+        try:
+            # Проверяем, что соединение живое
+            connection.ping(reconnect=True)
+            
+            with connection.cursor() as cursor:
+                cursor.execute(query, params)
+                
+                if fetch_method == "fetchall":
+                    return cursor.fetchall()
+                elif fetch_method == "fetchone":
+                    return cursor.fetchone()
+                elif fetch_method == "rowcount":
+                    return cursor.rowcount
+                else:
+                    return None
+                    
+        except Exception as e:
+            print(f"❌ Ошибка выполнения запроса (попытка {attempt + 1}): {e}")
+            
+            if attempt < max_attempts - 1:
+                print("🔄 Переподключаемся к БД...")
+                # Пытаемся переподключиться
+                try:
+                    connection.ping(reconnect=True)
+                except:
+                    # Если ping не помог, создаем новое соединение
+                    pass
+            else:
+                print("💥 Все попытки выполнения запроса исчерпаны")
+                raise e
+    
+    return None
+
+def safe_kanban_query(query, params=None, fetch_method="fetchall"):
+    """Безопасное выполнение запроса к канбан БД с автоматическим переподключением"""
+    connection = get_kanban_db_connection()
+    if not connection:
+        raise Exception("Не удалось подключиться к канбан БД")
+    
     try:
-        print("🔌 Попытка подключения к канбан-базе данных...")
-        connection = pymysql.connect(
-            host='147.45.138.77',
-            port=3306,
-            user='tekman',
-            password='Moloko123!',
-            database='TEKMAN',
-            charset='utf8',
-            cursorclass=pymysql.cursors.DictCursor
-        )
-        print("✅ Подключение к канбан-базе успешно!")
-        return connection
-    except Exception as e:
-        print(f"❌ Ошибка подключения к канбан-базе: {e}")
-        print(f"🔍 Тип ошибки: {type(e).__name__}")
-        return None
+        return execute_with_retry(connection, query, params, fetch_method)
+    finally:
+        try:
+            connection.close()
+        except:
+            pass
 
 class User(db.Model):
     __tablename__ = 'users'
@@ -97,15 +207,9 @@ def get_models():
         return jsonify({'error': 'User not found'}), 404
     
     try:
-        connection = pymysql.connect(
-            host='147.45.138.77',
-            port=3306,
-            user='tekbot',
-            password='77tanufe',
-            database='tekbot',
-            charset='utf8',
-            cursorclass=pymysql.cursors.DictCursor
-        )
+        connection = get_main_db_connection()
+        if not connection:
+            return jsonify({'error': 'Database connection failed'}), 500
         
         with connection.cursor() as cursor:
             if user.role == 'admin':
@@ -165,15 +269,11 @@ def get_chats():
     chat_list = []
     for chat in chats:
         try:
-            connection = pymysql.connect(
-                host='147.45.138.77',
-                port=3306,
-                user='tekbot',
-                password='77tanufe',
-                database='tekbot',
-                charset='utf8',
-                cursorclass=pymysql.cursors.DictCursor
-            )
+            connection = get_main_db_connection()
+            if not connection:
+                print("❌ Не удалось подключиться к БД для получения модели")
+                model_name = 'Неизвестная модель'
+                continue
             
             with connection.cursor() as cursor:
                 cursor.execute("SELECT model_name FROM models WHERE id = %s", (chat.model_id,))
@@ -211,15 +311,9 @@ def create_chat():
         return jsonify({'error': 'user_id and model_id required'}), 400
     
     try:
-        connection = pymysql.connect(
-            host='147.45.138.77',
-            port=3306,
-            user='tekbot',
-            password='77tanufe',
-            database='tekbot',
-            charset='utf8',
-            cursorclass=pymysql.cursors.DictCursor
-        )
+        connection = get_main_db_connection()
+        if not connection:
+            return jsonify({'error': 'Database connection failed'}), 500
         
         with connection.cursor() as cursor:
             user = User.query.get(user_id)
@@ -294,15 +388,9 @@ def chat_with_ai():
     print(f"Сообщение пользователя сохранено в БД")
     
     try:
-        connection = pymysql.connect(
-            host='147.45.138.77',
-            port=3306,
-            user='tekbot',
-            password='77tanufe',
-            database='tekbot',
-            charset='utf8',
-            cursorclass=pymysql.cursors.DictCursor
-        )
+        connection = get_main_db_connection()
+        if not connection:
+            return jsonify({'error': 'Database connection failed'}), 500
         
         with connection.cursor() as cursor:
             cursor.execute("SELECT * FROM models WHERE id = %s", (model_id,))
@@ -414,15 +502,9 @@ def update_chat(chat_id):
     
     if 'model_id' in data:
         try:
-            connection = pymysql.connect(
-                host='147.45.138.77',
-                port=3306,
-                user='tekbot',
-                password='77tanufe',
-                database='tekbot',
-                charset='utf8',
-                cursorclass=pymysql.cursors.DictCursor
-            )
+            connection = get_main_db_connection()
+            if not connection:
+                return jsonify({'error': 'Database connection failed'}), 500
             
             with connection.cursor() as cursor:
                 user = User.query.get(chat.user_id)
@@ -450,20 +532,15 @@ def update_chat(chat_id):
     db.session.commit()
     
     try:
-        connection = pymysql.connect(
-            host='147.45.138.77',
-            port=3306,
-            user='tekbot',
-            password='77tanufe',
-            database='tekbot',
-            charset='utf8',
-            cursorclass=pymysql.cursors.DictCursor
-        )
-        
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT model_name FROM models WHERE id = %s", (chat.model_id,))
-            model_info = cursor.fetchone()
-            model_name = model_info['model_name'] if model_info else 'Неизвестная модель'
+        connection = get_main_db_connection()
+        if not connection:
+            print("❌ Не удалось подключиться к БД для получения названия модели")
+            model_name = 'Неизвестная модель'
+        else:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT model_name FROM models WHERE id = %s", (chat.model_id,))
+                model_info = cursor.fetchone()
+                model_name = model_info['model_name'] if model_info else 'Неизвестная модель'
             
     except Exception as e:
         print(f"Ошибка получения названия модели: {e}")
@@ -506,24 +583,15 @@ def delete_chat(chat_id):
 def get_web_canban():
     """Получить все задачи из web канбан-доски"""
     print("🔄 GET /api/web_canban - запрос на получение задач")
-    connection = get_kanban_db_connection()
-    if not connection:
-        print("❌ Не удалось получить подключение к базе данных")
-        return jsonify({'error': 'Database connection failed'}), 500
     
     try:
-        with connection.cursor() as cursor:
-            print("📋 Выполняем запрос: SELECT * FROM web_canban ORDER BY id DESC")
-            cursor.execute("SELECT * FROM web_canban ORDER BY id DESC")
-            tasks = cursor.fetchall()
-            print(f"✅ Получено задач: {len(tasks)}")
-            return jsonify(tasks)
+        print("📋 Выполняем запрос: SELECT * FROM web_canban ORDER BY id DESC")
+        tasks = safe_kanban_query("SELECT * FROM web_canban ORDER BY id DESC")
+        print(f"✅ Получено задач: {len(tasks)}")
+        return jsonify(tasks)
     except Exception as e:
         print(f"❌ Ошибка выполнения запроса: {e}")
         return jsonify({'error': str(e)}), 500
-    finally:
-        connection.close()
-        print("🔌 Соединение с базой данных закрыто")
 
 @app.route('/api/web_canban', methods=['POST'])
 def add_web_canban_task():
@@ -623,19 +691,11 @@ def delete_web_canban_task(task_id):
 @app.route('/api/tsd_android_canban', methods=['GET'])
 def get_tsd_android_canban():
     """Получить все задачи из tsd_android канбан-доски"""
-    connection = get_kanban_db_connection()
-    if not connection:
-        return jsonify({'error': 'Database connection failed'}), 500
-    
     try:
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT * FROM tsd_android_canban ORDER BY id DESC")
-            tasks = cursor.fetchall()
-            return jsonify(tasks)
+        tasks = safe_kanban_query("SELECT * FROM tsd_android_canban ORDER BY id DESC")
+        return jsonify(tasks)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-    finally:
-        connection.close()
 
 @app.route('/api/tsd_android_canban', methods=['POST'])
 def add_tsd_android_canban_task():
@@ -735,19 +795,11 @@ def delete_tsd_android_canban_task(task_id):
 @app.route('/api/win_tsd_canban', methods=['GET'])
 def get_win_tsd_canban():
     """Получить все задачи из win_tsd канбан-доски"""
-    connection = get_kanban_db_connection()
-    if not connection:
-        return jsonify({'error': 'Database connection failed'}), 500
-    
     try:
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT * FROM win_tsd_canban ORDER BY id DESC")
-            tasks = cursor.fetchall()
-            return jsonify(tasks)
+        tasks = safe_kanban_query("SELECT * FROM win_tsd_canban ORDER BY id DESC")
+        return jsonify(tasks)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-    finally:
-        connection.close()
 
 @app.route('/api/win_tsd_canban', methods=['POST'])
 def add_win_tsd_canban_task():
@@ -847,19 +899,11 @@ def delete_win_tsd_canban_task(task_id):
 @app.route('/api/system_canban', methods=['GET'])
 def get_system_canban():
     """Получить все задачи из system канбан-доски"""
-    connection = get_kanban_db_connection()
-    if not connection:
-        return jsonify({'error': 'Database connection failed'}), 500
-    
     try:
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT * FROM system_canban ORDER BY id DESC")
-            tasks = cursor.fetchall()
-            return jsonify(tasks)
+        tasks = safe_kanban_query("SELECT * FROM system_canban ORDER BY id DESC")
+        return jsonify(tasks)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-    finally:
-        connection.close()
 
 @app.route('/api/system_canban', methods=['POST'])
 def add_system_canban_task():
